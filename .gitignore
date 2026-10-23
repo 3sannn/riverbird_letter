@@ -1,0 +1,16 @@
+/vendor/
+/node_modules/
+.env
+/storage/documents/*
+/storage/uploads/*
+/storage/logs/*
+/storage/backups/*
+!/storage/documents/.gitkeep
+!/storage/uploads/.gitkeep
+!/storage/logs/.gitkeep
+!/storage/backups/.gitkeep
+.phpunit.result.cache
+.idea/
+.vscode/
+*.log
+composer.lock
