@@ -13,4 +13,6 @@ export const COMPANY = {
   /** Trimmed wordmarks for document headers (larger visible mark in PDF) */
   logoHeaderPath: "/assets/images/riverbird-logo-header.png",
   logoWordmarkPath: "/assets/images/riverbird-logo-wordmark.png",
+  /** Alias for templates — full-color wordmark on white documents */
+  logoDocumentPath: "/assets/images/riverbird-logo-wordmark.png",
 };

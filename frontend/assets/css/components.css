@@ -179,19 +179,60 @@
 
 .how-steps {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  align-items: stretch;
 }
 
-.how-steps li {
+.how-step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   background: var(--surface);
   border: 1px solid var(--divider);
   border-radius: var(--radius);
-  padding: 14px;
-  font-size: 0.88rem;
+  padding: 14px 14px 16px;
+  min-height: 100%;
 }
 
-.how-steps strong {
+.how-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.how-step-body strong {
   display: block;
   margin-bottom: 4px;
+  font-size: 0.92rem;
+}
+
+.how-step-body p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 900px) {
+  .how-steps {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .how-steps {
+    grid-template-columns: 1fr;
+  }
 }

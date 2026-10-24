@@ -9,10 +9,11 @@ function formatDisplayDate(iso) {
   return `${d}/${m}/${y}`;
 }
 
-function companyFooter(c) {
+function companyFooter(c, variant = "invoice") {
   const co = c || COMPANY;
   return `
-    <footer class="doc-footer">
+    <div class="doc-footer-rule" aria-hidden="true"></div>
+    <footer class="doc-footer doc-footer--${variant}">
       <p class="doc-footer-name">${co.footerName}</p>
       <p>${co.address}</p>
       <p>Website: ${co.website} &nbsp; Mobile: ${co.mobile}</p>
@@ -21,16 +22,20 @@ function companyFooter(c) {
 }
 
 function headerLogo(co, variant = "invoice") {
-  const src = co.logoHeaderPath || co.logoPath;
-  const width = variant === "proposal" ? 400 : 340;
+  const src = co.logoHeaderPath || co.logoPath || co.logoWordmarkPath;
+  const width = variant === "proposal" ? 300 : 280;
   return `<img class="doc-logo doc-logo--${variant}" src="${src}" alt="RiverBird" width="${width}" decoding="async" />`;
 }
 
 function addressBlock(person, business, address) {
   return `
-    <p class="address-name">${escapeHtml((person || "").toUpperCase())}</p>
-    <p class="address-lines">${escapeHtml(business || "")}<br>
+    <p class="party-name">${escapeHtml((person || "").toUpperCase())}</p>
+    <p class="party-lines">${escapeHtml(business || "")}<br>
     ${escapeHtml(address || "").replace(/\n/g, "<br>")}</p>`;
+}
+
+function proposalSectionTitle(num, label) {
+  return `<h2 class="prop-section-title"><span class="prop-section-num">${num}.</span> ${escapeHtml(label)}</h2>`;
 }
 
 export function renderInvoiceDocument(data) {
@@ -39,80 +44,113 @@ export function renderInvoiceDocument(data) {
   const ship = data.copyShipFromBill ? bill : data.shipTo || {};
   const totals = invoiceTotals(data);
   const status = data.paymentStatus || "unpaid";
-  let paidLabel = formatINR(totals.received);
-  if (status === "partial") {
-    paidLabel = `${formatINR(totals.received)} (Partial — ${formatINR(totals.outstanding)} due)`;
-  } else if (status === "unpaid" && totals.received === 0) {
-    paidLabel = formatINR(0);
-  }
 
-  const rows = (data.lineItems || [])
-    .filter((r) => (r.description || "").trim())
+  const lineItems = (data.lineItems || []).filter((r) => (r.description || "").trim());
+  const rows = lineItems
     .map((r, i) => {
       const qty = Number(r.quantity) || 1;
       const linePaise = r.unitPrice != null ? toPaise(r.unitPrice) * qty : toPaise(r.amount || 0);
       return `<tr>
-        <td>${i + 1}</td>
+        <td class="col-sno">${i + 1}</td>
         <td>${escapeHtml(r.description)}</td>
         <td class="num">${formatINRPlain(linePaise)}</td>
       </tr>`;
     })
     .join("");
 
+  const emptyRows =
+    lineItems.length < 3
+      ? Array.from({ length: 3 - lineItems.length })
+          .map(() => `<tr class="inv-empty-row"><td class="col-sno">&nbsp;</td><td>&nbsp;</td><td class="num">&nbsp;</td></tr>`)
+          .join("")
+      : "";
+
   const subtotalPaise = sumLineItems(data.lineItems || []);
+  const paidDisplay = formatINR(totals.received);
+  const paidStatusLabel =
+    status === "partial" ? "PARTIALLY PAID" : status === "unpaid" ? "UNPAID" : "PAID";
 
   return `
     <article class="doc-sheet invoice-doc" data-document="invoice">
-      <div class="invoice-accent-bar" aria-hidden="true"></div>
-      <header class="invoice-hero">
-        <div class="invoice-hero-left">
+      <div class="inv-top-rule" aria-hidden="true"></div>
+
+      <div class="inv-main">
+      <header class="inv-header">
+        <div class="inv-header-left">
+          <h1 class="inv-company-name">${escapeHtml(co.name)}</h1>
+          <p class="inv-company-tagline">${escapeHtml(co.tagline)}</p>
           ${headerLogo(co, "invoice")}
-          <div class="invoice-company-text">
-            <h1 class="invoice-company-name">${escapeHtml(co.name)}</h1>
-            <p class="invoice-company-tagline">${escapeHtml(co.tagline)}</p>
-          </div>
         </div>
-        <div class="invoice-hero-right">
-          <h2 class="invoice-doc-title">INVOICE</h2>
-          <p class="invoice-meta-accent">${formatDisplayDate(data.invoiceDate)}</p>
-          <p class="invoice-meta-accent"><strong>INVOICE NO.</strong> ${escapeHtml(data.invoiceNumber || "DRAFT")}</p>
+        <div class="inv-header-right">
+          <h2 class="inv-title">INVOICE</h2>
+          <p class="inv-date">${formatDisplayDate(data.invoiceDate)}</p>
+          <p class="inv-number"><strong>INVOICE NO.</strong> <span class="inv-number-value">${escapeHtml(data.invoiceNumber || "DRAFT")}</span></p>
         </div>
       </header>
 
-      <div class="invoice-address-panel">
-        <section class="invoice-address-col">
-          <h3 class="address-label">Bill To</h3>
-          ${addressBlock(bill.name, bill.business, bill.address)}
+      <div class="inv-party-grid">
+        <section class="inv-party">
+          <div class="inv-party-banner">Bill To</div>
+          <div class="inv-party-content">${addressBlock(bill.name, bill.business, bill.address)}</div>
         </section>
-        <section class="invoice-address-col invoice-address-col--divider">
-          <h3 class="address-label">Ship To</h3>
-          ${addressBlock(ship.name, ship.business, ship.address)}
+        <section class="inv-party">
+          <div class="inv-party-banner">Ship To</div>
+          <div class="inv-party-content">${addressBlock(ship.name, ship.business, ship.address)}</div>
         </section>
       </div>
 
-      <div class="invoice-body">
-        <table class="doc-table doc-table--invoice">
-          <thead>
-            <tr><th>S.no</th><th>Description</th><th class="num">Amount (₹)</th></tr>
-          </thead>
-          <tbody>${rows || '<tr><td colspan="3" class="muted">No line items</td></tr>'}</tbody>
-        </table>
+      <table class="inv-items-table">
+        <thead>
+          <tr>
+            <th class="col-sno">S.no</th>
+            <th>Description</th>
+            <th class="num">Amount (₹)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows || '<tr><td colspan="3" class="muted">No line items</td></tr>'}
+          ${emptyRows}
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" class="inv-total-label"><strong>Total</strong></td>
+            <td class="num"><strong>${formatINRPlain(subtotalPaise)}</strong></td>
+          </tr>
+        </tfoot>
+      </table>
 
-        <div class="doc-summary-grid">
-          <div class="doc-remarks">
-            <strong class="remarks-label">Remarks / Payment Instructions:</strong>
-            <div class="rich-block">${sanitizeHtml(data.remarksHtml || escapeHtml(data.remarks || ""))}</div>
-          </div>
-          <table class="doc-totals doc-totals--boxed">
-            <tr><td>Subtotal</td><td class="num">${formatINR(subtotalPaise)}</td></tr>
-            <tr><td>Discount</td><td class="num">${formatINRPlain(totals.discount, { decimals: true })}</td></tr>
-            <tr><td>Amount received</td><td class="num">${formatINRPlain(totals.received)}</td></tr>
-            <tr><td>Shipping / handling</td><td class="num">${formatINRPlain(totals.shipping, { decimals: true })}</td></tr>
-            <tr class="grand"><td>Total</td><td class="num">${formatINR(totals.total)}</td></tr>
-            <tr class="paid-row"><td>Paid</td><td class="num">${paidLabel}</td></tr>
-          </table>
+      <div class="inv-settlement">
+        <div class="inv-remarks">
+          <span class="inv-remarks-label">Remarks / Payment Instructions:</span>
+          <span class="inv-remarks-text rich-block">${sanitizeHtml(data.remarksHtml || escapeHtml(data.remarks || ""))}</span>
         </div>
-        ${companyFooter(co)}
+        <div class="inv-ledger">
+          <div class="inv-ledger-row">
+            <span class="inv-ledger-key">DISCOUNT</span>
+            <span class="inv-ledger-dots" aria-hidden="true"></span>
+            <span class="inv-ledger-val">${formatINRPlain(totals.discount, { decimals: true })}</span>
+          </div>
+          <div class="inv-ledger-row">
+            <span class="inv-ledger-key">AMOUNT RECEIVED</span>
+            <span class="inv-ledger-dots" aria-hidden="true"></span>
+            <span class="inv-ledger-val">${formatINRPlain(totals.received)}</span>
+          </div>
+          <div class="inv-ledger-row">
+            <span class="inv-ledger-key">SHIPPING/HANDLING</span>
+            <span class="inv-ledger-dots" aria-hidden="true"></span>
+            <span class="inv-ledger-val">${formatINRPlain(totals.shipping, { decimals: true })}</span>
+          </div>
+          <div class="inv-ledger-row inv-ledger-paid">
+            <span class="inv-ledger-key inv-paid-label"><strong>${paidStatusLabel}</strong></span>
+            <span class="inv-ledger-dots" aria-hidden="true"></span>
+            <span class="inv-paid-box">${paidDisplay}</span>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      <div class="inv-footer-block">
+        ${companyFooter(co, "invoice")}
       </div>
     </article>`;
 }
@@ -136,70 +174,70 @@ export function renderProposalDocument(data) {
     0
   );
 
-  const deliv = (data.deliverables || [])
-    .map(
-      (d, i) =>
-        `<tr><td>${i + 1}</td><td>${escapeHtml(d.label)}</td><td>${escapeHtml(d.quantity)}</td></tr>`
-    )
+  const deliv = (data.deliverables || []);
+  let delivTotal = 0;
+  const delivRows = deliv
+    .map((d, i) => {
+      const q = parseInt(String(d.quantity).replace(/\D/g, ""), 10);
+      if (!Number.isNaN(q)) delivTotal += q;
+      return `<tr><td>${i + 1}</td><td>${escapeHtml(d.label)}</td><td>${escapeHtml(d.quantity)}</td></tr>`;
+    })
     .join("");
 
   return `
     <article class="doc-sheet proposal-doc" data-document="proposal">
-      <header class="proposal-hero">
-        <div class="proposal-hero-brand">
-          ${headerLogo(co, "proposal")}
-          <span class="proposal-brand-rule" aria-hidden="true"></span>
-        </div>
-        <h1 class="proposal-main-title">${escapeHtml(title)}</h1>
-        <p class="proposal-meta-line">
-          <span><span class="meta-label">Prepared For:</span> <span class="meta-value">${escapeHtml(client)}</span></span>
-          <span class="meta-sep">·</span>
-          <span><span class="meta-label">Prepared By:</span> <span class="meta-value">${escapeHtml(data.preparedBy || "RiverBird.in")}</span></span>
-          <span class="meta-sep">·</span>
-          <span><span class="meta-label">Date:</span> <span class="meta-value">${formatDisplayDate(data.proposalDate)}</span></span>
+      <header class="prop-header">
+        <div class="prop-logo-row">${headerLogo(co, "proposal")}</div>
+        <h1 class="prop-title">${escapeHtml(title)}</h1>
+        <p class="prop-meta">
+          <span><span class="prop-meta-label">Prepared For:</span> ${escapeHtml(client)}</span>
+          <span><span class="prop-meta-label">Prepared By:</span> ${escapeHtml(data.preparedBy || "RiverBird.in")}</span>
+          <span><span class="prop-meta-label">Date:</span> ${formatDisplayDate(data.proposalDate)}</span>
         </p>
+        <hr class="prop-header-rule" />
       </header>
 
-      <div class="proposal-body">
-        <section class="doc-section">
-          <h2 class="section-heading">1. Introduction</h2>
-          <div class="rich-block">${sanitizeHtml(data.introductionHtml)}</div>
+      <div class="prop-body">
+        <section class="prop-section">
+          ${proposalSectionTitle(1, "Introduction")}
+          <div class="rich-block prop-content">${sanitizeHtml(data.introductionHtml)}</div>
         </section>
 
-        <section class="doc-section">
-          <h2 class="section-heading">2. Scope of Service</h2>
-          <div class="rich-block">${sanitizeHtml(data.scopeHtml)}</div>
+        <section class="prop-section">
+          ${proposalSectionTitle(2, "Scope of Service")}
+          <div class="rich-block prop-content prop-scope">${sanitizeHtml(data.scopeHtml)}</div>
         </section>
 
-        <section class="doc-section">
-          <h2 class="section-heading">3. Service Cost</h2>
-          <table class="doc-table doc-table--proposal">
+        <section class="prop-section">
+          ${proposalSectionTitle(3, "Service Cost")}
+          <table class="prop-table">
             <thead><tr><th>S.No</th><th>Service</th><th class="num">Amount / Per Month</th></tr></thead>
             <tbody>${serviceRows}</tbody>
             <tfoot><tr><td colspan="2"><strong>Total</strong></td><td class="num"><strong>${formatINR(serviceTotal)}</strong></td></tr></tfoot>
           </table>
         </section>
 
-        <section class="doc-section">
-          <h2 class="section-heading">4. Deliverables</h2>
-          <table class="doc-table doc-table--proposal">
-            <thead><tr><th>S.no</th><th>Reels / Posters</th><th>Quantity</th></tr></thead>
-            <tbody>${deliv}</tbody>
+        <section class="prop-section prop-section--page-break">
+          ${proposalSectionTitle(4, "Deliverables")}
+          <table class="prop-table">
+            <thead><tr><th>S.no</th><th>/video/Posters</th><th>Quantity</th></tr></thead>
+            <tbody>${delivRows}</tbody>
+            <tfoot><tr><td colspan="2"><strong>Total</strong></td><td><strong>${delivTotal || ""}</strong></td></tr></tfoot>
           </table>
         </section>
 
-        <section class="doc-section">
-          <h2 class="section-heading">5. Terms &amp; Conditions</h2>
-          <div class="rich-block">${sanitizeHtml(data.termsHtml)}</div>
+        <section class="prop-section">
+          ${proposalSectionTitle(5, "Terms & Conditions")}
+          <div class="rich-block prop-content">${sanitizeHtml(data.termsHtml)}</div>
         </section>
 
-        <section class="doc-section">
-          <h2 class="section-heading">6. Conclusion</h2>
-          <div class="rich-block">${sanitizeHtml(data.conclusionHtml)}</div>
-          <div class="rich-block approval-block">${sanitizeHtml(data.approvalHtml)}</div>
+        <section class="prop-section">
+          ${proposalSectionTitle(6, "Conclusion")}
+          <div class="rich-block prop-content">${sanitizeHtml(data.conclusionHtml)}</div>
+          <div class="rich-block prop-approval">${sanitizeHtml(data.approvalHtml)}</div>
         </section>
 
-        ${companyFooter(co)}
+        ${companyFooter(co, "proposal")}
       </div>
     </article>`;
 }

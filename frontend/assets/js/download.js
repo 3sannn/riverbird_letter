@@ -1,11 +1,6 @@
 import { renderDocument } from "./document-preview.js";
 import { sanitizeFilename } from "./local-drafts.js";
 
-const DOCUMENT_CSS = `
-  @import url('/assets/css/documents.css');
-  @import url('/assets/css/print.css');
-`;
-
 export function buildStandaloneHtml(data) {
   const body = renderDocument(data);
   const css = window.__RBDS_EXPORT_CSS || "";
@@ -68,22 +63,97 @@ export function loadHtml2Pdf() {
   return html2pdfLoadPromise;
 }
 
+/** A4 at 96 CSS px/in (slightly under height avoids html2pdf spill to page 2) */
+const A4_WIDTH_PX = 794;
+const A4_HEIGHT_PX = 1122;
+
+function prepareInvoicePdfNode(node) {
+  const prev = {
+    width: node.style.width,
+    height: node.style.height,
+    minHeight: node.style.minHeight,
+    maxHeight: node.style.maxHeight,
+    boxShadow: node.style.boxShadow,
+    className: node.className,
+  };
+  node.classList.add("invoice-pdf-export");
+  node.style.width = `${A4_WIDTH_PX}px`;
+  node.style.height = `${A4_HEIGHT_PX}px`;
+  node.style.minHeight = `${A4_HEIGHT_PX}px`;
+  node.style.maxHeight = `${A4_HEIGHT_PX}px`;
+  node.style.boxShadow = "none";
+  return prev;
+}
+
+function restoreInvoicePdfNode(node, prev) {
+  node.className = prev.className;
+  node.style.width = prev.width;
+  node.style.height = prev.height;
+  node.style.minHeight = prev.minHeight;
+  node.style.maxHeight = prev.maxHeight;
+  node.style.boxShadow = prev.boxShadow;
+}
+
+async function saveInvoicePdf(node, filename) {
+  const opt = {
+    margin: 0,
+    filename,
+    image: { type: "jpeg", quality: 0.96 },
+    html2canvas: {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
+      scrollX: 0,
+      scrollY: -window.scrollY,
+      width: A4_WIDTH_PX,
+      height: A4_HEIGHT_PX,
+      windowWidth: A4_WIDTH_PX,
+      windowHeight: A4_HEIGHT_PX,
+    },
+    jsPDF: { unit: "mm", format: "a4", orientation: "portrait", compress: true },
+    pagebreak: { mode: [] },
+  };
+
+  const pdf = await window.html2pdf().set(opt).from(node).toPdf().get("pdf");
+  let pages = pdf.internal.getNumberOfPages();
+  while (pages > 1) {
+    pdf.deletePage(pages);
+    pages = pdf.internal.getNumberOfPages();
+  }
+  pdf.save(filename);
+}
+
 export async function downloadPdf(previewRoot) {
   const node = previewRoot.querySelector(".doc-sheet");
   if (!node) throw new Error("Nothing to export");
   await loadHtml2Pdf();
   if (!window.html2pdf) throw new Error("PDF library not loaded");
 
-  const opt = {
-    margin: [8, 8, 12, 8],
-    filename: `${baseFilenameFromNode(node)}.pdf`,
-    image: { type: "jpeg", quality: 0.98 },
-    html2canvas: { scale: 2.25, useCORS: true, logging: false, allowTaint: true },
-    jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-    pagebreak: { mode: ["css", "legacy"], before: ".page-break-before" },
-  };
+  const filename = `${baseFilenameFromNode(node)}.pdf`;
+  const isInvoice = node.classList.contains("invoice-doc");
+  const invoicePrev = isInvoice ? prepareInvoicePdfNode(node) : null;
 
-  await window.html2pdf().set(opt).from(node).save();
+  await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+  try {
+    if (isInvoice) {
+      await saveInvoicePdf(node, filename);
+      return;
+    }
+
+    const opt = {
+      margin: [6, 6, 6, 6],
+      filename,
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, allowTaint: true },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+      pagebreak: { mode: ["css", "legacy"] },
+    };
+    await window.html2pdf().set(opt).from(node).save();
+  } finally {
+    if (isInvoice && invoicePrev) restoreInvoicePdfNode(node, invoicePrev);
+  }
 }
 
 export function printDocument() {
@@ -101,10 +171,10 @@ function baseFilename(data) {
 function baseFilenameFromNode(node) {
   const kind = node.dataset.document;
   if (kind === "invoice") {
-    const num = node.querySelector(".doc-meta-line strong")?.parentElement?.textContent?.replace(/INVOICE NO\./i, "").trim();
+    const num = node.querySelector(".inv-number-value")?.textContent?.trim();
     return sanitizeFilename(num || "Invoice");
   }
-  const t = node.querySelector(".proposal-main-title")?.textContent || "Proposal";
+  const t = node.querySelector(".prop-title")?.textContent || "Proposal";
   return sanitizeFilename(t);
 }
 
