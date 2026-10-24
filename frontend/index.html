@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RiverBird Document Studio</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/layout.css" />
+    <link rel="stylesheet" href="/assets/css/components.css" />
+  </head>
+  <body class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/">
+        <img src="/assets/images/riverbird-logo.png" alt="RiverBird" width="120" height="36" />
+        <div>
+          <strong>RiverBird Document Studio</strong>
+          <span>Internal documents · RiverBird Digital Solutions</span>
+        </div>
+      </a>
+      <nav class="app-nav">
+        <a class="btn btn-secondary btn-sm" href="/templates">Templates</a>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <h1 class="page-title">Create invoices and proposals</h1>
+      <p class="page-lead">
+        Select a template, fill in client and project details, preview the finished document, and download PDF or HTML.
+        Drafts are saved in this browser only.
+      </p>
+
+      <div class="card-grid">
+        <article class="category-card">
+          <h2>Invoice billings</h2>
+          <p>Standard RiverBird invoice with Bill To / Ship To, line items, and payment summary.</p>
+          <a class="btn btn-primary" href="/templates?category=invoice">Choose invoice</a>
+        </article>
+        <article class="category-card">
+          <h2>Proposal</h2>
+          <p>Multi-section project proposals with scope, pricing, deliverables, and terms.</p>
+          <a class="btn btn-primary" href="/templates?category=proposal">Choose proposal</a>
+        </article>
+      </div>
+
+      <div class="card-grid">
+        <article class="category-card">
+          <h2>Quick start</h2>
+          <p>Skip template browsing and open a blank document.</p>
+          <a class="btn btn-secondary" href="/editor?kind=invoice&template=invoice-blank">New invoice</a>
+          <a class="btn btn-secondary" href="/editor?kind=proposal&template=proposal-blank" style="margin-left: 8px">New proposal</a>
+        </article>
+      </div>
+
+      <p class="notice" id="draft-notice"></p>
+
+      <div class="section-head">
+        <h2>Recent drafts</h2>
+        <button type="button" class="btn btn-ghost btn-sm" id="import-backup-btn">Import JSON backup</button>
+        <input type="file" id="dashboard-import-input" accept="application/json,.json" class="sr-only" />
+      </div>
+      <p id="drafts-empty" class="hidden" style="color: var(--muted); font-size: 0.9rem">
+        No drafts yet. Start from a template above — your work will appear here automatically.
+      </p>
+      <ul class="draft-list" id="draft-list"></ul>
+
+      <div class="section-head"><h2>Download &amp; save</h2></div>
+      <ol class="how-steps">
+        <li><strong>Edit</strong> Fill structured fields and rich text in the editor.</li>
+        <li><strong>Preview</strong> Check the A4 layout before exporting.</li>
+        <li><strong>Download PDF</strong> Uses in-browser PDF generation, or Print → Save as PDF.</li>
+        <li><strong>Backup</strong> Export draft JSON to move work between browsers.</li>
+      </ol>
+    </main>
+
+    <footer class="app-footer">RiverBird Digital Solutions Pvt Ltd · Document Studio</footer>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module">
+      import { initDashboard } from "/assets/js/dashboard.js";
+      initDashboard();
+    </script>
+  </body>
+</html>

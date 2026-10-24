@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Editor · RiverBird Document Studio</title>
+    <link rel="preload" href="/assets/images/riverbird-logo-header.png" as="image" />
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/layout.css" />
+    <link rel="stylesheet" href="/assets/css/components.css" />
+    <link rel="stylesheet" href="/assets/css/editor.css" />
+    <link rel="stylesheet" href="/assets/css/documents.css" />
+    <link rel="stylesheet" href="/assets/css/print.css" />
+    <link rel="stylesheet" href="/assets/vendor/quill/quill.snow.css" />
+  </head>
+  <body class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/">
+        <img src="/assets/images/riverbird-logo.png" alt="RiverBird" width="120" height="36" />
+        <div>
+          <strong id="editor-kind-label">Editor</strong>
+          <span>RiverBird Document Studio</span>
+        </div>
+      </a>
+      <nav class="app-nav">
+        <button type="button" class="btn btn-ghost btn-sm" id="btn-dashboard">Dashboard</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-back">Templates</button>
+      </nav>
+    </header>
+
+    <main class="app-main" style="width: min(1400px, 100%)">
+      <div class="editor-toolbar-top">
+        <div>
+          <span class="save-status" id="save-status">—</span>
+        </div>
+        <div class="editor-actions">
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-export-json">Export JSON</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-import-json">Import JSON</button>
+          <input type="file" id="import-json-input" accept="application/json,.json" class="sr-only" />
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-download-txt">Download TXT</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-download-html">Download HTML</button>
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-print">Print</button>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-download-pdf">Download PDF</button>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-delete-draft">Delete draft</button>
+        </div>
+      </div>
+
+      <div class="view-tabs" role="tablist" aria-label="Editor views">
+        <button type="button" data-view-tab="editor" class="is-active">Editor</button>
+        <button type="button" data-view-tab="preview">Preview</button>
+      </div>
+
+      <div id="editor-workspace" data-view="editor">
+        <div class="panel" id="editor-panel">
+          <form id="editor-form" autocomplete="off">
+            <div class="field-grid full">
+              <div class="full">
+                <label for="title">Document title (internal)</label>
+                <input type="text" id="title" name="title" />
+              </div>
+            </div>
+
+            <div id="invoice-fields">
+              <h2>Invoice details</h2>
+              <div class="field-grid">
+                <div>
+                  <label for="invoiceDate">Invoice date</label>
+                  <input type="date" id="invoiceDate" name="invoiceDate" />
+                </div>
+                <div>
+                  <label for="invoiceNumber">Invoice number</label>
+                  <input type="text" id="invoiceNumber" name="invoiceNumber" />
+                  <p class="warning-text" id="invoice-number-warning"></p>
+                </div>
+              </div>
+
+              <h2>Bill To</h2>
+              <div class="field-grid">
+                <div>
+                  <label for="billName">Name</label>
+                  <input type="text" id="billName" name="billName" />
+                </div>
+                <div>
+                  <label for="billBusiness">Business</label>
+                  <input type="text" id="billBusiness" name="billBusiness" />
+                </div>
+                <div class="full">
+                  <label for="billAddress">Address</label>
+                  <textarea id="billAddress" name="billAddress"></textarea>
+                </div>
+              </div>
+
+              <h2>Ship To</h2>
+              <label style="text-transform: none; font-weight: 500">
+                <input type="checkbox" id="copyShipFromBill" name="copyShipFromBill" checked />
+                Same as Bill To
+              </label>
+              <div class="field-grid">
+                <div>
+                  <label for="shipName">Name</label>
+                  <input type="text" id="shipName" name="shipName" />
+                </div>
+                <div>
+                  <label for="shipBusiness">Business</label>
+                  <input type="text" id="shipBusiness" name="shipBusiness" />
+                </div>
+                <div class="full">
+                  <label for="shipAddress">Address</label>
+                  <textarea id="shipAddress" name="shipAddress"></textarea>
+                </div>
+              </div>
+
+              <h2>Line items</h2>
+              <table class="table-editor">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Description</th>
+                    <th>Qty</th>
+                    <th>Unit price (₹)</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="line-items-body"></tbody>
+              </table>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-line">Add line item</button>
+              <div class="totals-summary" id="totals-summary"></div>
+
+              <h2>Payment</h2>
+              <div class="field-grid">
+                <div>
+                  <label for="discount">Discount (₹)</label>
+                  <input type="number" id="discount" name="discount" min="0" step="0.01" value="0" />
+                </div>
+                <div>
+                  <label for="shipping">Shipping / handling (₹)</label>
+                  <input type="number" id="shipping" name="shipping" min="0" step="0.01" value="0" />
+                </div>
+                <div>
+                  <label for="amountReceived">Amount received (₹)</label>
+                  <input type="number" id="amountReceived" name="amountReceived" min="0" step="0.01" value="0" />
+                </div>
+                <div>
+                  <label for="paymentStatus">Payment status</label>
+                  <select id="paymentStatus" name="paymentStatus">
+                    <option value="paid">Paid</option>
+                    <option value="partial">Partially paid</option>
+                    <option value="unpaid">Unpaid</option>
+                  </select>
+                </div>
+              </div>
+
+              <h2>Remarks / payment instructions</h2>
+              <div class="quill-wrap">
+                <div id="remarks-editor"></div>
+              </div>
+            </div>
+
+            <div id="proposal-fields" class="hidden">
+              <h2>Proposal details</h2>
+              <div class="field-grid">
+                <div>
+                  <label for="clientName">Client name</label>
+                  <input type="text" id="clientName" name="clientName" />
+                </div>
+                <div>
+                  <label for="preparedBy">Prepared by</label>
+                  <input type="text" id="preparedBy" name="preparedBy" value="RiverBird.in" />
+                </div>
+                <div>
+                  <label for="proposalDate">Date</label>
+                  <input type="date" id="proposalDate" name="proposalDate" />
+                </div>
+              </div>
+
+              <h2>1. Introduction</h2>
+              <div class="quill-wrap"><div id="intro-editor"></div></div>
+
+              <h2>2. Scope of service</h2>
+              <div class="quill-wrap"><div id="scope-editor"></div></div>
+
+              <h2>3. Service cost</h2>
+              <table class="table-editor">
+                <thead><tr><th>Service</th><th>Amount / month (₹)</th><th></th></tr></thead>
+                <tbody id="service-rows-body"></tbody>
+              </table>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-service">Add service row</button>
+
+              <h2>4. Deliverables</h2>
+              <table class="table-editor">
+                <thead><tr><th>Item</th><th>Quantity</th><th></th></tr></thead>
+                <tbody id="deliverables-body"></tbody>
+              </table>
+              <button type="button" class="btn btn-secondary btn-sm" id="btn-add-deliverable">Add deliverable</button>
+
+              <h2>5. Terms &amp; conditions</h2>
+              <div class="quill-wrap"><div id="terms-editor"></div></div>
+
+              <h2>6. Conclusion &amp; approval</h2>
+              <div class="quill-wrap"><div id="conclusion-editor"></div></div>
+              <div class="quill-wrap"><div id="approval-editor"></div></div>
+            </div>
+          </form>
+        </div>
+
+        <div class="panel" id="preview-panel">
+          <h2>Live preview</h2>
+          <div id="preview-root" aria-live="polite"></div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="app-footer">PDF output is generated in your browser. For best results use Chrome or Edge.</footer>
+
+    <script defer src="/assets/vendor/dompurify/purify.min.js"></script>
+    <script defer src="/assets/vendor/quill/quill.js"></script>
+    <script type="module" src="/assets/js/editor-page.js"></script>
+  </body>
+</html>

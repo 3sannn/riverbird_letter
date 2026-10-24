@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Templates · RiverBird Document Studio</title>
+    <link rel="stylesheet" href="/assets/css/base.css" />
+    <link rel="stylesheet" href="/assets/css/layout.css" />
+    <link rel="stylesheet" href="/assets/css/components.css" />
+  </head>
+  <body class="app-shell">
+    <header class="app-header">
+      <a class="brand" href="/">
+        <img src="/assets/images/riverbird-logo.png" alt="RiverBird" width="120" height="36" />
+        <div>
+          <strong>Templates</strong>
+          <span>RiverBird Document Studio</span>
+        </div>
+      </a>
+      <nav class="app-nav">
+        <a class="btn btn-secondary btn-sm" href="/">Dashboard</a>
+      </nav>
+    </header>
+
+    <main class="app-main">
+      <h1 class="page-title">Choose a template</h1>
+      <p class="page-lead">Reference examples keep original invoice numbers and proposal wording. New documents use editable starter content.</p>
+
+      <div class="filter-bar">
+        <button type="button" data-filter="all">All</button>
+        <button type="button" data-filter="invoice">Invoice billings</button>
+        <button type="button" data-filter="proposal">Proposal</button>
+      </div>
+
+      <section id="section-invoice">
+        <div class="section-head"><h2>Invoice billings</h2></div>
+        <div class="card-grid" id="invoice-templates"></div>
+      </section>
+
+      <section id="section-proposal">
+        <div class="section-head"><h2>Proposal</h2></div>
+        <div class="card-grid" id="proposal-templates"></div>
+      </section>
+    </main>
+
+    <footer class="app-footer">Original Word references remain in <code>doc/</code> unchanged.</footer>
+    <script type="module" src="/assets/js/app.js"></script>
+    <script type="module">
+      import { initTemplatesPage } from "/assets/js/template-manager.js";
+      initTemplatesPage();
+    </script>
+  </body>
+</html>

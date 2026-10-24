@@ -1,126 +1,118 @@
-# RiverBird Letter — Document Management Portal
+# RiverBird Document Studio
 
-Private document portal for **RiverBird Digital Solutions Pvt Ltd**: clients, invoices (automatic `RB-MMYYNN` numbering), proposals, quotations, letters, PDF export, and audit logging. Built for **Hostinger Shared Hosting** (PHP 8.1+, MariaDB/MySQL).
+Lightweight internal document editor for **RiverBird Digital Solutions Pvt Ltd**. Create and edit **invoices** and **proposals** from company templates, preview on A4, and download **PDF**, **HTML**, or **TXT**. Drafts are stored in the browser (no database, no login).
 
-Original reference Word files remain in [`doc/`](doc/) and are never modified by the app.
+Original reference Word files live in [`doc/`](doc/) and are never modified by the app.
 
-## Requirements
+## Architecture
 
-- PHP **8.1+** with extensions: `pdo_mysql`, `json`, `mbstring`, `fileinfo`, `gd` (recommended for Dompdf)
-- MariaDB/MySQL 10.3+
-- Composer (on server or deploy vendor via CI)
-- HTTPS in production
+| Layer | Technology |
+|--------|------------|
+| Server | Python 3.11+, FastAPI, Uvicorn |
+| Frontend | HTML5, CSS3, vanilla JavaScript (ES modules) |
+| Editing | Quill (self-hosted under `frontend/assets/vendor/`) |
+| PDF | html2pdf.js (client-side); optional **Print → Save as PDF** |
+| Drafts | `localStorage` in the browser |
+
+No PHP, MySQL/Neon, AWS S3, or authentication.
+
+## Folder structure
+
+```
+backend/app/main.py          FastAPI app, static assets, /health
+frontend/                    Dashboard, templates, editor UI
+frontend/assets/js/          Editor logic, previews, drafts, downloads
+doc/                         Original .docx reference documents
+render.yaml                  Render Free Web Service config
+```
 
 ## Local setup
 
-1. Clone the repository and copy environment file:
-   ```bash
-   cp .env.example .env
-   ```
-2. Install dependencies:
-   ```bash
-   composer install
-   ```
-3. Create database and configure `.env` (`DB_*`, `APP_URL`).
-4. Run migrations:
-   ```bash
-   php database/migrate.php
-   ```
-5. Create the first administrator (only when no users exist):
-   - **Browser:** visit `/setup`
-   - **CLI:** `php bin/create-admin.php <username> <email> <password> "Full Name"`
-6. Seed system templates (optional):
-   ```bash
-   php database/seed/seed.php
-   ```
-7. Import historical reference invoices (optional, preserves `RB2026010` and `RB-092602`):
-   ```bash
-   php database/seed/import_reference_data.php
-   ```
-8. Point the web server document root to **`public/`** (see Hostinger below).
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate          # Windows
+pip install -r requirements.txt
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-## Running tests
+Open [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+Health check: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+
+### Frontend vendor libraries (optional rebuild)
 
 ```bash
-composer test
-# or
-vendor/bin/phpunit
+cd frontend
+npm install
+# Copy dist files into frontend/assets/vendor/ (quill, dompurify, html2pdf.js)
 ```
 
-**Note:** PHPUnit tests for invoice formatting/calculations run without a database. Concurrency tests for `InvoiceNumberService::allocateForDate()` must be run on an environment with MySQL (staging/Hostinger).
+Committed copies under `frontend/assets/vendor/` are used at runtime.
 
-Tests were **not executed** in the initial development environment (PHP CLI was unavailable locally). Run them after `composer install`.
+## Production behavior
 
-## Project layout
+- **GZip** compression for HTML/CSS/JS responses
+- **Cache-Control** on static assets (images, CSS, JS) for faster repeat visits
+- **Security headers** (`X-Content-Type-Options`, `X-Frame-Options`, etc.)
+- **Lazy-loaded PDF library** (html2pdf only when you click Download PDF)
+- **Throttled live preview** (`requestAnimationFrame`) so typing stays smooth
+- **Deferred** vendor scripts on the editor page
 
-| Path | Purpose |
-|------|---------|
-| `public/` | Web document root (`index.php`, assets) |
-| `app/` | Application code (auth, documents, invoices, files) |
-| `config/` | App and database configuration |
-| `database/` | `schema.sql`, migrate script, seeds |
-| `templates/` | A4 document render templates |
-| `views/` | UI templates |
-| `storage/` | Private uploads, generated PDFs, logs (not in Git) |
-| `doc/` | Original reference `.docx` files (read-only source) |
+Set `ENV=production` on Render (included in `render.yaml`) to hide OpenAPI `/docs` in production.
 
-## Hostinger deployment (GitHub)
+## Render deployment (GitHub)
 
-1. Connect the private GitHub repo in hPanel → **Websites → Git**.
-2. Set the deployment **document root** to the repository’s `public` folder. If Hostinger only allows `public_html`, either:
-   - Configure the site to use `public` as the web root in hPanel, or
-   - Copy/symlink `public/*` into `public_html` and adjust paths (document root must hit `public/index.php`).
-3. On the server (SSH or hPanel terminal), from the project root:
-   ```bash
-   composer install --no-dev --optimize-autoloader
-   cp .env.example .env
-   # Edit .env with production DB credentials and APP_URL=https://your-domain
-   php database/migrate.php
-   ```
-4. Create admin via `/setup` or `php bin/create-admin.php`.
-5. Ensure `storage/` is **outside** public web access. `storage/.htaccess` denies direct access; generated files are served only via authenticated PHP download routes.
-6. Set `APP_DEBUG=false` in production.
-7. Enable SSL (Let’s Encrypt) in hPanel.
+Full step-by-step: **[docs/DEPLOY_RENDER_GITHUB.md](docs/DEPLOY_RENDER_GITHUB.md)**
 
-**Important:** Git deploy may overwrite code but must **not** delete `storage/` or `.env`. Keep uploads and `.env` on the server outside the deploy target or use Hostinger “retain” paths if available.
+Quick reference:
 
-## Private storage
+1. Push this repo to GitHub (`main` branch).
+2. Render → **New Blueprint** (uses `render.yaml`) or **New Web Service** with:
+   - **Build:** `pip install -r backend/requirements.txt`
+   - **Start:** `cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips='*' --no-access-log`
+   - **Health check:** `/health`
+3. Environment: `PYTHON_VERSION=3.11.9`, `ENV=production`
 
-Configure `STORAGE_PATH` in `.env` (default: `storage`). On Hostinger, if you can place storage above `public_html`, set an absolute path in `.env`:
+User drafts are **not** stored on Render’s disk. Export JSON/HTML/PDF locally for backups.
 
-```env
-STORAGE_PATH=/home/u123456/domains/yourdomain.com/private_storage
-```
+## Using the app
 
-## Backups
+1. **Dashboard** — choose Invoice billings or Proposal, or resume a draft.
+2. **Templates** — new document or reference examples:
+   - Invoices: `RB2026010` (website), `RB-092602` (GMB SEO)
+   - Proposal: Mano Bakery SMM starter content
+3. **Editor** — structured fields + rich text; live A4 preview.
+4. **Download** — PDF (browser), HTML (standalone with CSS), TXT, or Print.
 
-- **Database:** regular mysqldump via hPanel or cron.
-- **Files:** backup `storage/documents` and `storage/uploads`.
-- Restore: import SQL dump, restore storage directory, verify `.env`.
+### Invoice numbers
 
-## Invoice numbering
+New invoices suggest format `RB-MMYYNN` using a **local** counter in `localStorage`. This is **not** globally unique across devices or browsers. Always review the number before sending.
 
-New invoices receive numbers **`RB-MMYYNN`** only when **issued** (drafts do not consume numbers). Sequence resets each calendar month. Historical numbers from reference documents are imported as-is and are never renamed.
+### Drafts
 
-## Reference documents (`doc/`)
+- Auto-saved in this browser profile.
+- **Export JSON** / **Import JSON** to move work between machines.
+- **Delete draft** removes only the local copy.
 
-| File | Type |
-|------|------|
-| `Dermiiz_website_advance_invoice.docx` | Invoice `RB2026010` |
-| `invoice_RB092602.docx` | Invoice `RB-092602` |
-| `SMM_Proposal_Mano_Bakery.docx` | Proposal template source (Mano Bakery) |
+## Browser support
 
-Logo used in the UI is extracted from the invoice documents: `public/assets/images/riverbird-logo.png`.
+Tested targets: current Chrome, Edge, Firefox, Safari. PDF layout quality is best in Chromium-based browsers.
 
-## Troubleshooting
+## Adding or changing templates
 
-- **500 after deploy:** check PHP version ≥ 8.1, run `composer install`, verify `.env` DB settings.
-- **PDF errors:** ensure `vendor/` exists and Dompdf can load DejaVu fonts (default).
-- **Routes 404:** enable `mod_rewrite`; use `public/.htaccess`.
-- **Login lockout:** wait for `LOGIN_LOCKOUT_MINUTES` or clear `login_attempts` table.
+1. Edit seed data in `frontend/assets/js/template-seeds.js`.
+2. Adjust layout in `frontend/assets/js/document-preview.js` and `frontend/assets/css/documents.css`.
+3. Add a card in `template-manager.js` and `templates.html` if needed.
 
-## Security
+## Known limitations
 
-- CSRF on POST, session cookies `HttpOnly` / `Secure` (when HTTPS), password hashing via `password_hash()`.
-- Role-based access: administrator, staff, viewer.
-- No default passwords; first user via `/setup` only when the users table is empty.
+- No shared storage between team members without JSON export.
+- Invoice sequence is not concurrency-safe without a database.
+- Render Free ephemeral filesystem is not used for user documents by design.
+- `window.print()` does not download a file automatically; users must choose “Save as PDF” in the print dialog.
+
+## Tests performed
+
+- FastAPI `/health` (run locally after `uvicorn` start)
+- Manual checks recommended: editor preview, totals, PDF/HTML download, JSON import/export, mobile Editor/Preview tabs

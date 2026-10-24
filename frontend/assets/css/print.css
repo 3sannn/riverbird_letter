@@ -1,0 +1,45 @@
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  #preview-root,
+  #preview-root * {
+    visibility: visible;
+  }
+
+  #preview-root {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    padding: 0;
+    background: #fff;
+  }
+
+  .doc-sheet {
+    box-shadow: none;
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 12mm 14mm;
+  }
+
+  .app-header,
+  .editor-toolbar-top,
+  .view-tabs,
+  #editor-panel,
+  .app-footer,
+  .panel:not(#preview-panel) {
+    display: none !important;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 12mm;
+}
+
+.page-break-before {
+  page-break-before: always;
+}
