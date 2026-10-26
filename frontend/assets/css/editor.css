@@ -21,8 +21,12 @@
 #editor-workspace {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
+  gap: clamp(12px, 3vw, 24px);
   align-items: start;
+}
+
+.table-scroll-hint {
+  display: none;
 }
 
 
@@ -102,6 +106,24 @@ textarea {
   max-width: 120px;
 }
 
+/* Plain decimal fields — no browser spinner buttons */
+.input-money,
+.table-editor input[data-field="quantity"],
+.table-editor input[data-field="unitPrice"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.input-money::-webkit-outer-spin-button,
+.input-money::-webkit-inner-spin-button,
+.table-editor input[data-field="quantity"]::-webkit-outer-spin-button,
+.table-editor input[data-field="quantity"]::-webkit-inner-spin-button,
+.table-editor input[data-field="unitPrice"]::-webkit-outer-spin-button,
+.table-editor input[data-field="unitPrice"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .table-editor {
   width: 100%;
   border-collapse: collapse;
@@ -172,6 +194,7 @@ textarea {
 @media (max-width: 960px) {
   #editor-workspace {
     grid-template-columns: 1fr;
+    gap: 16px;
   }
   #preview-panel {
     position: static;
@@ -179,6 +202,12 @@ textarea {
   }
   .view-tabs {
     display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg);
+    padding: 8px 0;
+    margin: 0 0 12px;
   }
   #editor-workspace[data-view="editor"] #preview-panel {
     display: none;

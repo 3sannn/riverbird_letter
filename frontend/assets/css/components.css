@@ -177,6 +177,12 @@
   font-weight: 600;
 }
 
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 .how-steps {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

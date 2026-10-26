@@ -331,6 +331,12 @@
   align-items: center;
 }
 
+.inv-ledger-grand {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--rb-gray-mid);
+}
+
 .inv-paid-label {
   font-size: 11pt;
 }

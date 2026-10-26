@@ -1,5 +1,12 @@
 import { COMPANY } from "./company.js";
-import { formatINR, formatINRPlain, invoiceTotals, sumLineItems, toPaise } from "./money.js";
+import {
+  formatINR,
+  formatINRPlain,
+  invoicePaidDisplayAmount,
+  invoiceTotals,
+  sumLineItems,
+  toPaise,
+} from "./money.js";
 import { sanitizeHtml } from "./sanitize.js";
 
 function formatDisplayDate(iso) {
@@ -66,9 +73,14 @@ export function renderInvoiceDocument(data) {
       : "";
 
   const subtotalPaise = sumLineItems(data.lineItems || []);
-  const paidDisplay = formatINR(totals.received);
+  const paidPaise = invoicePaidDisplayAmount(totals, status);
+  const paidDisplay = formatINR(paidPaise);
   const paidStatusLabel =
     status === "partial" ? "PARTIALLY PAID" : status === "unpaid" ? "UNPAID" : "PAID";
+  const discountLabel =
+    totals.discountPercent > 0
+      ? `DISCOUNT (${totals.discountPercent}%)`
+      : "DISCOUNT";
 
   return `
     <article class="doc-sheet invoice-doc" data-document="invoice">
@@ -126,19 +138,24 @@ export function renderInvoiceDocument(data) {
         </div>
         <div class="inv-ledger">
           <div class="inv-ledger-row">
-            <span class="inv-ledger-key">DISCOUNT</span>
+            <span class="inv-ledger-key">${discountLabel}</span>
             <span class="inv-ledger-dots" aria-hidden="true"></span>
             <span class="inv-ledger-val">${formatINRPlain(totals.discount, { decimals: true })}</span>
           </div>
           <div class="inv-ledger-row">
             <span class="inv-ledger-key">AMOUNT RECEIVED</span>
             <span class="inv-ledger-dots" aria-hidden="true"></span>
-            <span class="inv-ledger-val">${formatINRPlain(totals.received)}</span>
+            <span class="inv-ledger-val">${formatINRPlain(totals.received, { decimals: true })}</span>
           </div>
           <div class="inv-ledger-row">
             <span class="inv-ledger-key">SHIPPING/HANDLING</span>
             <span class="inv-ledger-dots" aria-hidden="true"></span>
             <span class="inv-ledger-val">${formatINRPlain(totals.shipping, { decimals: true })}</span>
+          </div>
+          <div class="inv-ledger-row inv-ledger-grand">
+            <span class="inv-ledger-key"><strong>TOTAL</strong></span>
+            <span class="inv-ledger-dots" aria-hidden="true"></span>
+            <span class="inv-ledger-val"><strong>${formatINRPlain(totals.total, { decimals: true })}</strong></span>
           </div>
           <div class="inv-ledger-row inv-ledger-paid">
             <span class="inv-ledger-key inv-paid-label"><strong>${paidStatusLabel}</strong></span>

@@ -9,7 +9,7 @@ import {
 } from "./local-drafts.js";
 import { suggestInvoiceNumber, invoiceNumberWarning } from "./invoice-number.js";
 import { downloadHtml, downloadPdf, downloadText, preloadExportCss, printDocument } from "./download.js";
-import { invoiceTotals, formatINR } from "./money.js";
+import { invoiceTotals, formatINR, fromPaise } from "./money.js";
 
 const params = new URLSearchParams(location.search);
 const kind = params.get("kind") || "invoice";
@@ -35,15 +35,26 @@ const els = {
   deliverablesBody: document.getElementById("deliverables-body"),
 };
 
+function normalizeInvoiceDraft(draft) {
+  if (draft?.kind !== "invoice") return draft;
+  if (draft.discountPercent == null && draft.discount != null) {
+    const d = Number(draft.discount);
+    draft.discountPercent = Number.isFinite(d) && d <= 100 ? d : 0;
+  }
+  if (draft.discountPercent == null) draft.discountPercent = 0;
+  delete draft.discount;
+  return draft;
+}
+
 function initState() {
   if (draftId) {
     const existing = getDraft(draftId);
     if (existing) {
-      state = existing;
+      state = normalizeInvoiceDraft(existing);
       return;
     }
   }
-  state = getTemplateSeed(kind, templateId);
+  state = normalizeInvoiceDraft(getTemplateSeed(kind, templateId));
   state.id = crypto.randomUUID();
   if (kind === "invoice" && !state.invoiceNumber && templateId === "invoice-blank") {
     state.invoiceNumber = suggestInvoiceNumber();
@@ -230,7 +241,7 @@ function readInvoiceForm() {
       address: f.shipAddress.value,
     };
   }
-  state.discount = parseFloat(f.discount.value) || 0;
+  state.discountPercent = parseFloat(f.discountPercent.value) || 0;
   state.shipping = parseFloat(f.shipping.value) || 0;
   state.amountReceived = parseFloat(f.amountReceived.value) || 0;
   state.paymentStatus = f.paymentStatus.value;
@@ -239,6 +250,11 @@ function readInvoiceForm() {
     quantity: parseFloat(row.querySelector("[data-field=quantity]")?.value) || 1,
     unitPrice: parseFloat(row.querySelector("[data-field=unitPrice]")?.value) || 0,
   }));
+  const totals = invoiceTotals(state);
+  if (state.paymentStatus === "paid" && state.amountReceived === 0 && totals.total > 0) {
+    state.amountReceived = fromPaise(totals.total);
+    f.amountReceived.value = String(state.amountReceived);
+  }
   updateTotalsSummary();
 }
 
@@ -279,7 +295,7 @@ function hydrateInvoice() {
   f.shipName.value = state.shipTo?.name || "";
   f.shipBusiness.value = state.shipTo?.business || "";
   f.shipAddress.value = state.shipTo?.address || "";
-  f.discount.value = state.discount ?? 0;
+  f.discountPercent.value = state.discountPercent ?? 0;
   f.shipping.value = state.shipping ?? 0;
   f.amountReceived.value = state.amountReceived ?? 0;
   f.paymentStatus.value = state.paymentStatus || "unpaid";
@@ -315,8 +331,8 @@ function renderLineItems() {
     tr.innerHTML = `
       <td>${idx + 1}</td>
       <td><input data-field="description" type="text" value="${escapeAttr(row.description)}" /></td>
-      <td><input data-field="quantity" type="number" min="1" step="1" value="${row.quantity ?? 1}" class="input-narrow" /></td>
-      <td><input data-field="unitPrice" type="number" min="0" step="0.01" value="${row.unitPrice ?? 0}" class="input-narrow" /></td>
+      <td><input data-field="quantity" type="text" inputmode="numeric" value="${row.quantity ?? 1}" class="input-narrow" autocomplete="off" /></td>
+      <td><input data-field="unitPrice" type="text" inputmode="decimal" value="${row.unitPrice ?? 0}" class="input-narrow" autocomplete="off" /></td>
       <td><button type="button" class="btn-icon" data-remove-row aria-label="Remove row">×</button></td>`;
     els.lineItemsBody.appendChild(tr);
   });
@@ -368,7 +384,10 @@ function updateTotalsSummary() {
   const t = invoiceTotals(state);
   el.innerHTML = `
     <p>Subtotal: <strong>${formatINR(t.subtotal)}</strong></p>
+    <p>Discount (${t.discountPercent}%): <strong>-${formatINR(t.discount)}</strong></p>
+    <p>Shipping: <strong>${formatINR(t.shipping)}</strong></p>
     <p>Total: <strong>${formatINR(t.total)}</strong></p>
+    <p>Amount received: <strong>${formatINR(t.received)}</strong></p>
     <p>Outstanding: <strong>${formatINR(t.outstanding)}</strong></p>`;
 }
 
@@ -385,6 +404,16 @@ function wireInvoiceExtras() {
     toggleShipFields();
     readForm();
     refreshPreview();
+  });
+  els.form.paymentStatus?.addEventListener("change", () => {
+    const f = els.form;
+    readForm();
+    const t = invoiceTotals(state);
+    if (f.paymentStatus.value === "paid") {
+      state.amountReceived = fromPaise(t.total);
+      f.amountReceived.value = String(state.amountReceived);
+    }
+    onFormChange();
   });
 }
 

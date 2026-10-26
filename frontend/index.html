@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="/assets/css/base.css" />
     <link rel="stylesheet" href="/assets/css/layout.css" />
     <link rel="stylesheet" href="/assets/css/components.css" />
+    <link rel="stylesheet" href="/assets/css/responsive.css" />
   </head>
   <body class="app-shell">
     <header class="app-header">
@@ -46,8 +47,10 @@
         <article class="category-card">
           <h2>Quick start</h2>
           <p>Skip template browsing and open a blank document.</p>
-          <a class="btn btn-secondary" href="/editor?kind=invoice&template=invoice-blank">New invoice</a>
-          <a class="btn btn-secondary" href="/editor?kind=proposal&template=proposal-blank" style="margin-left: 8px">New proposal</a>
+          <div class="btn-row">
+            <a class="btn btn-secondary" href="/editor?kind=invoice&template=invoice-blank">New invoice</a>
+            <a class="btn btn-secondary" href="/editor?kind=proposal&template=proposal-blank">New proposal</a>
+          </div>
         </article>
       </div>
 

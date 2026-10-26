@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="/assets/css/editor.css" />
     <link rel="stylesheet" href="/assets/css/documents.css" />
     <link rel="stylesheet" href="/assets/css/print.css" />
+    <link rel="stylesheet" href="/assets/css/responsive.css" />
     <link rel="stylesheet" href="/assets/vendor/quill/quill.snow.css" />
   </head>
   <body class="app-shell">
@@ -28,20 +29,18 @@
       </nav>
     </header>
 
-    <main class="app-main" style="width: min(1400px, 100%)">
+    <main class="app-main app-main--editor">
       <div class="editor-toolbar-top">
-        <div>
-          <span class="save-status" id="save-status">—</span>
-        </div>
+        <span class="save-status" id="save-status">—</span>
         <div class="editor-actions">
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-export-json">Export JSON</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-import-json">Import JSON</button>
+          <button type="button" class="btn btn-primary btn-action-pdf" id="btn-download-pdf">Download PDF</button>
+          <button type="button" class="btn btn-secondary" id="btn-download-html">Download HTML</button>
+          <button type="button" class="btn btn-secondary" id="btn-print">Print</button>
+          <button type="button" class="btn btn-secondary" id="btn-export-json">Export JSON</button>
+          <button type="button" class="btn btn-secondary" id="btn-import-json">Import JSON</button>
           <input type="file" id="import-json-input" accept="application/json,.json" class="sr-only" />
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-download-txt">Download TXT</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-download-html">Download HTML</button>
-          <button type="button" class="btn btn-secondary btn-sm" id="btn-print">Print</button>
-          <button type="button" class="btn btn-primary btn-sm" id="btn-download-pdf">Download PDF</button>
-          <button type="button" class="btn btn-ghost btn-sm" id="btn-delete-draft">Delete draft</button>
+          <button type="button" class="btn btn-secondary" id="btn-download-txt">Download TXT</button>
+          <button type="button" class="btn btn-ghost" id="btn-delete-draft">Delete draft</button>
         </div>
       </div>
 
@@ -111,34 +110,61 @@
               </div>
 
               <h2>Line items</h2>
-              <table class="table-editor">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Description</th>
-                    <th>Qty</th>
-                    <th>Unit price (₹)</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody id="line-items-body"></tbody>
-              </table>
+              <p class="table-scroll-hint">Swipe sideways to see all columns on small screens.</p>
+              <div class="table-scroll">
+                <table class="table-editor table-editor--lines">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Description</th>
+                      <th>Qty</th>
+                      <th>Unit price (₹)</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="line-items-body"></tbody>
+                </table>
+              </div>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-add-line">Add line item</button>
               <div class="totals-summary" id="totals-summary"></div>
 
               <h2>Payment</h2>
               <div class="field-grid">
                 <div>
-                  <label for="discount">Discount (₹)</label>
-                  <input type="number" id="discount" name="discount" min="0" step="0.01" value="0" />
+                  <label for="discountPercent">Discount (%)</label>
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    id="discountPercent"
+                    name="discountPercent"
+                    class="input-money"
+                    value="0"
+                    autocomplete="off"
+                  />
                 </div>
                 <div>
                   <label for="shipping">Shipping / handling (₹)</label>
-                  <input type="number" id="shipping" name="shipping" min="0" step="0.01" value="0" />
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    id="shipping"
+                    name="shipping"
+                    class="input-money"
+                    value="0"
+                    autocomplete="off"
+                  />
                 </div>
                 <div>
                   <label for="amountReceived">Amount received (₹)</label>
-                  <input type="number" id="amountReceived" name="amountReceived" min="0" step="0.01" value="0" />
+                  <input
+                    type="text"
+                    inputmode="decimal"
+                    id="amountReceived"
+                    name="amountReceived"
+                    class="input-money"
+                    value="0"
+                    autocomplete="off"
+                  />
                 </div>
                 <div>
                   <label for="paymentStatus">Payment status</label>
@@ -180,17 +206,21 @@
               <div class="quill-wrap"><div id="scope-editor"></div></div>
 
               <h2>3. Service cost</h2>
-              <table class="table-editor">
-                <thead><tr><th>Service</th><th>Amount / month (₹)</th><th></th></tr></thead>
-                <tbody id="service-rows-body"></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="table-editor">
+                  <thead><tr><th>Service</th><th>Amount / month (₹)</th><th></th></tr></thead>
+                  <tbody id="service-rows-body"></tbody>
+                </table>
+              </div>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-add-service">Add service row</button>
 
               <h2>4. Deliverables</h2>
-              <table class="table-editor">
-                <thead><tr><th>Item</th><th>Quantity</th><th></th></tr></thead>
-                <tbody id="deliverables-body"></tbody>
-              </table>
+              <div class="table-scroll">
+                <table class="table-editor">
+                  <thead><tr><th>Item</th><th>Quantity</th><th></th></tr></thead>
+                  <tbody id="deliverables-body"></tbody>
+                </table>
+              </div>
               <button type="button" class="btn btn-secondary btn-sm" id="btn-add-deliverable">Add deliverable</button>
 
               <h2>5. Terms &amp; conditions</h2>
